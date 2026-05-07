@@ -1,0 +1,21 @@
+-- This query pulls a list of all distinct vendor shortnames used among ALL products from a brand
+-- Excludes that XXX_PHILLIP% vendor, DISCO, and Inactive items
+SELECT DISTINCT p.CONTACT_ID, 
+				(CASE
+					WHEN c.COMPANY = 'ZEIGLER`S DISTRIBUTIOR INC' THEN 'Zeig'
+					WHEN c.COMPANY = 'PHILLIP`S PET SUPPLY' THEN 'Phil'
+					WHEN c.COMPANY = 'NATURAL ANIMAL NUTRITION' THEN 'NAN'
+					WHEN c.COMPANY = 'BRADLEY CALDWELL' THEN 'Brad'
+					WHEN c.COMPANY = 'PET FOOD EXPERTS' THEN 'PFX'
+					WHEN c.COMPANY = 'TICKNER`S INC.' THEN 'Tick'
+					ELSE c.COMPANY
+				END) AS VENDOR
+FROM TB_PARTS p
+INNER JOIN TB_CONTACTS c
+ON c.CONTACT_ID = p.CONTACT_ID
+WHERE p.STYLE_ID IN (SELECT DISTINCT STYLE_ID 
+				     FROM TB_STYLES 
+				     WHERE BRAND = $(Brand)
+				     AND OF1 <> 'DISCO' 
+				     AND STATUS_FINISH <> 'Y')
+AND p.CONTACT_ID <> 195;

@@ -1,0 +1,108 @@
+PricingChecker
+
+This script would accept a collection of pricing spreadsheets on a vendor-brand basis and check Celerant's database for cost differences.
+This would need to be developed per vendor due to differences in the vehicle and layout of the document(s) detailing the pricing.
+Also is contingent on our part numbers actually matching what the vendor uses, including the presence of a leading zero.
+
+Rough description of how this would be used start to finish (Using PFX for the example):
+
+1. Go to the vendor's b2b website and download a spreadsheet with pricing changes for a brand.
+
+2. Rename the spreadsheet to something standardized.
+
+	a. It may be necessary to convert to a .csv for a Powershell script to be able to read. If it is necessary, see if it can be automatically converted so we don't have to deal with leading zeroes being removed during this conversion.
+	
+3. Run the script.
+
+	a. Since this is per vendor, the play may be to name a spreadsheet something indicating the vendor (pfx.xlsx/pfx.csv for PFX, zeig.xlsx/zeig.csv for Zeigler, etc) so the script knows which ones to process rather than selecting each vendor manually
+	
+4. The script will scan each row for a part number and new price and collect those into a list. Then, it will use that list of part numbers in a SQL query to find any products in Celerant that have that part number.
+
+5. The script will generate a .csv or .xlsx file that mirrors the layout we've been using. The old/new costs will be filled in based on the input spreadsheet.
+
+Limitations:
+
+I'm pretty sure not all vendors provide a pricing spreadsheet. PFX does but I just checked Zeigler and Bradley and neither seemed to have this available. The existence of these spreadsheets is basically a requirement for this tool to function, so this will be on hold unless and until I can confirm such a document does or can exist for each vendor.
+
+
+Alternative Design that just helps you get the spreadsheet set up rather than trying to automate the actual price fetching:
+
+PricingHelper
+
+Generate an .xlsx document and fill out everything that comes from Celerant.
+	Sheet1 - Equivalent to that generic Products search in Celerant. Only collect the relevant columns with a SQL query.
+	Sheet2 - This is the barcode lookup sheet. Can also automate filling out the Barcode Lookup that Sheet1 needs.
+	Sheet3 - Use the same dataset from Sheet1 to fill out the info needed for the product import. Leave Price and Cost blank since those need to be figured out manually.
+	Sheet4 - Use the same dataset from Sheet2 to fill out the info needed for communicating to managers. OH values can be filled in automatically. Leave "New Retail" blank as that requires being filled out manually.
+
+2 inputs from user needed:
+	Which BRAND? Prompt for exact spelling, maybe make the input uppercase just so I can eliminate casing being an issue. Maybe also allow wildcard use so the user can essentially "search" within the tool.
+	Do the products have more than 1 SKU (for the purposes of whether it should automatically collect a primary barcode or not, maybe just skip this until later if it becomes necessary)
+
+1 Query needed (I think):
+	Query1 - Pull general product information from something like VW_SKU_RPT. Include grabbing a Primary Barcode and QOH. Also include a store-level OH value from a subquery.
+	
+		SELECT tickets.BRAND AS [Brand], 
+			   tickets.STYLE AS [Style],
+			   tickets.LOOKUP AS [Barcode Lookup], 
+			   tickets.STORE_ID,
+			   tickets.PRICE AS [Old Retail], 
+			   CAST(styles.MARGIN_PERCENT AS DECIMAL(18, 2)) AS [Old Margin], 
+			   tickets.DESCRIPTION AS [Description 1], 
+			   styles.DESCRIPTION_2 AS [Description 2], 
+			   tickets.DEPT AS [Department], 
+			   tickets.TYP AS [Type],
+			   tickets.OF1 AS [SEASON], 
+			   tickets.OF5 AS [PROMO],
+			   buckets.QOH AS [Available],
+			   tickets.PRICE AS [Last Price],
+			   buckets.LAST_COST AS [Last Cost]
+		FROM VW_TICKETS tickets
+		INNER JOIN TB_STYLES styles
+		ON styles.STYLE_ID = tickets.STYLE_ID
+		INNER JOIN TB_SKU_BUCKETS buckets
+		ON buckets.SKU_ID = tickets.SKU_ID
+		AND buckets.SKU_BUCKET_ID = tickets.SKU_BUCKET_ID
+		AND buckets.STORE_ID = tickets.STORE_ID
+		WHERE tickets.BRAND = 'VITAL ESSENTIALS'
+		AND tickets.OF1 <> 'DISCO'
+		AND styles.STATUS_FINISH <> 'Y';
+	
+	Query2 - Maybe needed to grab a list of all present vendors from the parts of all products for that brand. If I wanted to include only relevant vendors, I'd need to know ahead of time which columns I need to generate.
+	
+		-- This query pulls a list of all distinct vendor shortnames used among ALL products from a brand
+		-- Excludes that XXX_PHILLIPS vendor, DISCO, and Inactive items
+		SELECT DISTINCT p.CONTACT_ID, 
+						(CASE
+							WHEN c.COMPANY = 'ZEIGLER`S DISTRIBUTIOR INC' THEN 'Zeig'
+							WHEN c.COMPANY = 'PHILLIP`S PET SUPPLY' THEN 'Phil'
+							WHEN c.COMPANY = 'NATURAL ANIMAL NUTRITION' THEN 'NAN'
+							WHEN c.COMPANY = 'BRADLEY CALDWELL' THEN 'Brad'
+							WHEN c.COMPANY = 'PET FOOD EXPERTS' THEN 'PFX'
+							WHEN c.COMPANY = 'TICKNER`S INC.' THEN 'Tick'
+							ELSE c.COMPANY
+						END) AS VENDOR
+		FROM TB_PARTS p
+		INNER JOIN TB_CONTACTS c
+		ON c.CONTACT_ID = p.CONTACT_ID
+		WHERE p.STYLE_ID IN (SELECT DISTINCT STYLE_ID 
+						   FROM TB_STYLES 
+						   WHERE BRAND = $(Brand)
+						   AND OF1 <> 'DISCO' 
+						   AND STATUS_FINISH <> 'Y')
+		AND p.CONTACT_ID <> 195;
+	
+Tables needed:
+	VW_SKU_RPT (Product-level info, Store-level QOH values, retail price)
+	VW_TICKETS (Product-level info with STYLE_ID needed to join to TB_PARTS)
+	TB_PARTS (Part-level info, specific price and vendor per item)
+	TB_CONTACTS (Optional only if I wanted to join contact_id to a specific vendor. If I just want to note the integer values for the IDs, I can avoid doing this join and using logic to figure the name out)
+	
+The user will need to:
+	Start the tool, input the brand when prompted (using wildcard if that is functional and the user wishes to, * -> % and use LIKE if wildcard is present)
+	Excel document is generated that can be imported into Google Sheets.
+	Sheet 1: Input "New" costs for each of the relevant vendors, then copy and paste values into the Cost and Price columns. The rest of the sheet should be filled out including formulas.
+	Sheet 2: Nothing
+	Sheet 3: Copy and paste the Cost and Price values into the appropriate columns. The rest should be filled out.
+	Sheet 4: Copy and paste the "New Retail" values into the appropriate column. I MAY be able to just use a formula to get it but that may be overengineering this.
+	Done
