@@ -1,19 +1,19 @@
 SELECT tickets.BRAND AS [Brand], 
 	   tickets.STYLE AS [Style],
-	   tickets.LOOKUP AS [Barcode Lookup], 
-	   tickets.STORE_ID,
-	   tickets.PRICE AS [Old Retail], 
-	   CAST(styles.MARGIN_PERCENT AS DECIMAL(18, 2)) AS [Old Margin], 
-	   tickets.DESCRIPTION AS [Description 1], 
-	   styles.DESCRIPTION_2 AS [Description 2], 
+	   tickets.LOOKUP AS [Barcode_Lookup], 
+	   tickets.STORE_ID AS [Store],
+	   tickets.PRICE AS [Old_Retail], 
+	   CAST(styles.MARGIN_PERCENT AS DECIMAL(18, 2)) AS [Old_Margin], 
+	   tickets.DESCRIPTION AS [Description_1], 
+	   styles.DESCRIPTION_2 AS [Description_2], 
 	   tickets.DEPT AS [Department], 
 	   tickets.TYP AS [Type],
-	   tickets.OF1 AS [SEASON], 
-	   tickets.OF5 AS [PROMO],
+	   tickets.OF1 AS [Season], 
+	   tickets.OF5 AS [Promo],
 	   buckets.QOH AS [Available],
-	   tickets.PRICE AS [Last Price],
-	   buckets.LAST_COST AS [Last Cost],
-	   parts.CONTACT_ID, 
+	   tickets.PRICE AS [Last_Price],
+	   buckets.LAST_COST AS [Last_Cost],
+	   parts.CONTACT_ID AS [Contact_Id], 
 	   (CASE contacts.COMPANY
 			WHEN 'ZEIGLER`S DISTRIBUTIOR INC' THEN 'Zeig'
 			WHEN 'PHILLIP`S PET SUPPLY' THEN 'Phil'
@@ -22,8 +22,9 @@ SELECT tickets.BRAND AS [Brand],
 			WHEN 'PET FOOD EXPERTS' THEN 'PFX'
 			WHEN 'TICKNER`S INC.' THEN 'Tick'
 			ELSE contacts.COMPANY
-		END) AS VENDOR,
-		parts.COST AS [Part Cost]
+		END) AS Vendor,
+		parts.PART_NUM AS [Part_Num],
+		parts.COST AS [Part_Cost]
 FROM VW_TICKETS tickets
 INNER JOIN TB_STYLES styles
 ON styles.STYLE_ID = tickets.STYLE_ID
@@ -36,6 +37,7 @@ ON parts.STYLE_ID = tickets.STYLE_ID
 AND parts.CONTACT_ID <> 195
 INNER JOIN TB_CONTACTS contacts
 ON contacts.CONTACT_ID = parts.CONTACT_ID
-WHERE tickets.BRAND = $(Brand)
+WHERE tickets.BRAND = '$(Brand)'
 AND tickets.OF1 <> 'DISCO'
-AND styles.STATUS_FINISH <> 'Y';
+AND styles.STATUS_FINISH <> 'Y'
+ORDER BY [Style];

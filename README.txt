@@ -1,4 +1,7 @@
 PricingHelper
+Requirements: ImportExcel
+
+Install-Module -Name ImportExcel -Scope CurrentUser -Force
 
 This is a tool meant to save time setting up the spreadsheets we use during the pricing update process.
 
