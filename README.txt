@@ -1,7 +1,11 @@
 PricingHelper
 Requirements: ImportExcel
 
-Install-Module -Name ImportExcel -Scope CurrentUser -Force
+***************************************************************************************************************************************************************************
+* To use this tool you need to install the ImportExcel module. All you need to do is run the below command in Powershell. It does not require Administrator credentials.  *
+*                                                                                                                                                                         *
+* Install-Module -Name ImportExcel -Scope CurrentUser -Force                                                                                                              *
+***************************************************************************************************************************************************************************
 
 This is a tool meant to save time setting up the spreadsheets we use during the pricing update process.
 
@@ -20,4 +24,10 @@ This will save time at multiple steps of the manual process:
 	Copying data from Sheet1 to Sheet4
 	Hooking up VLOOKUP on Sheet4 for each store to get inventory from Sheet2
 
-WIP
+The following functionality exists:
+	Sheet1 (Main sheet for recording part costs, calculating new margins and new retail values, calculating retail price differences)
+
+The following functionality does NOT exist yet:
+	Sheet2 (Barcode lookup, TECHNICALLY not necessary anymore since Barcode Lookup is filled in automatically but leaving it in so we can still check our work)
+	Sheet3 (Product import, should come together quickly since nothing is dynamically generated)
+	Sheet4 (Final price change page that is used for making the document managers will use)

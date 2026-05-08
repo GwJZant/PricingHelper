@@ -99,8 +99,8 @@ try {
 			Brand                     = $storeProducts[1].Brand
 			Product                   = $product
 			"Barcode Lookup"          = [string]$storeProducts[1].Barcode_Lookup + " "
-			Cost                      = ""
-			Price                     = ""
+			Cost                      = 0
+			Price                     = 0
 		}
 		
 		foreach ($vendor in $allVendors) {
@@ -178,6 +178,10 @@ try {
 		$columnData["Last Cost"]               = $storeProducts[1].Last_Cost
 		$columnData["Last Price"]              = $storeProducts[1].Last_Price
 		
+		# Update some prior values
+		$columnData["Cost"]                    = "=$newCostsMinRange"
+		$columnData["Price"]                   = "=$($newRetailLetter)$currRow"
+		
 		$rowCounter++
 		
 		# Create a custom object for your Excel row
@@ -200,7 +204,7 @@ try {
 					$sheet.Column($i).Style.Numberformat.Format = "0.00%"
 					break
 				}
-				{$_ -like "*Retail*" -or $_ -like "*Old*" -or $_ -like "*New*"} {
+				{$_ -like "*Retail*" -or $_ -like "*Old*" -or $_ -like "*New*" -or $_ -like "*Cost*" -or $_ -like "*Price*"} {
 					$sheet.Column($i).Style.Numberformat.Format = "$#,##0.00"
 					break
 				}
