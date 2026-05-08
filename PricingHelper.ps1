@@ -55,6 +55,35 @@ $sqlParams = @{
 	TrustServerCertificate = $true
 }
 
+# Function to format columns
+function Format-PricingSheet {
+	param($Worksheet)
+	
+	# Get the number of columns
+	$maxCol = $Worksheet.Dimension.Columns
+	
+	for ($i = 1; $i -le $maxCol; $i++) {
+		$headerValue = $Worksheet.Cells[1, $i].Value
+		
+		switch -wildcard ($headerValue.ToString()) {
+			"*Margin*" {
+				$Worksheet.Column($i).Style.Numberformat.Format = "0.00%"
+				break
+			}
+			{$_ -like "*Retail*" -or $_ -like "*Old*" -or $_ -like "*New*" -or $_ -like "*Cost*" -or $_ -like "*Price*"} {
+				$Worksheet.Column($i).Style.Numberformat.Format = "$#,##0.00"
+				break
+			}
+		}
+	}
+	
+	# Format Column B (Product) as Text so text alignment matches
+	Set-ExcelRange -Worksheet $Worksheet -Range "B:B" -NumberFormat "@"
+	
+	# Format Column C (Barcode Lookup) as Text so the E+11 goes away
+	Set-ExcelRange -Worksheet $Worksheet -Range "C:C" -NumberFormat "@"
+}
+
 try {
     $productData = Invoke-Sqlcmd @sqlParams
 	
@@ -87,7 +116,7 @@ try {
 			}
 		}
 		
-		Write-Host "Brand: $($storeProducts[1].Brand) Style: $($storeProducts[1].Style) Primary Barcode: $($storeProducts[1].Barcode_Lookup)"
+		# Write-Host "Brand: $($storeProducts[1].Brand) Style: $($storeProducts[1].Style) Primary Barcode: $($storeProducts[1].Barcode_Lookup)"
 		
 		# Total available
 		$totalAvailable = 0
@@ -189,37 +218,11 @@ try {
 	}
 	
 	# Generate the Excel File
-	$reportData | Export-Excel -Path $excelPath -TableStyle Medium2 -TableName "PricingTable" -AutoSize -BoldTopRow -PassThru | ForEach-Object {
-		# Use the 'PassThru' object to apply formatting to the specific worksheet
-		$sheet = $_.Workbook.Worksheets[1]
-		
-		# Get the number of columns
-		$maxCol = $sheet.Dimension.Columns
-		
-		for ($i = 1; $i -le $maxCol; $i++) {
-			$headerValue = $sheet.Cells[1, $i].Value
-			
-			switch -wildcard ($headerValue.ToString()) {
-				"*Margin*" {
-					$sheet.Column($i).Style.Numberformat.Format = "0.00%"
-					break
-				}
-				{$_ -like "*Retail*" -or $_ -like "*Old*" -or $_ -like "*New*" -or $_ -like "*Cost*" -or $_ -like "*Price*"} {
-					$sheet.Column($i).Style.Numberformat.Format = "$#,##0.00"
-					break
-				}
-			}
-		}
-		
-		# Format Column B (Product) as Text so text alignment matches
-		Set-ExcelRange -Worksheet $sheet -Range "B:B" -NumberFormat "@"
-		
-		# Format Column C (Barcode Lookup) as Text so the E+11 goes away
-		Set-ExcelRange -Worksheet $sheet -Range "C:C" -NumberFormat "@"
-		
-		# Save and Close
-		Close-ExcelPackage $_
-	}
+	$excelPackage = $reportData | Export-Excel -Path $excelPath -WorksheetName "Sheet One" -TableStyle Medium2 -TableName "PricingTable" -AutoSize -BoldTopRow -PassThru
+	Format-PricingSheet -Worksheet $excelPackage.Workbook.Worksheets["Sheet One"]
+	
+	# Save and Close
+	Close-ExcelPackage $excelPackage
 		
 } catch {
     Write-Host "SQL Error: $_" -ForegroundColor DarkRed
