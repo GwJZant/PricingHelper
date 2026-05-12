@@ -16,6 +16,8 @@ $excelPath = "$PSScriptRoot\Output\Pricing_$timestamp.xlsx"
 
 # Hash objects used for data storage
 $allProducts = @{} # A has table to store products
+$productValues = @{}
+$productVendorPartNums = @{}
 $allVendors = @() # A list to store all vendor shortnames
 
 # Load the config file and ensure it exists
@@ -76,12 +78,6 @@ function Format-PricingSheet {
 			}
 		}
 	}
-	
-	# Format Column B (Product) as Text so text alignment matches
-	Set-ExcelRange -Worksheet $Worksheet -Range "B:B" -NumberFormat "@"
-	
-	# Format Column C (Barcode Lookup) as Text so the E+11 goes away
-	Set-ExcelRange -Worksheet $Worksheet -Range "C:C" -NumberFormat "@"
 }
 
 try {
@@ -91,7 +87,7 @@ try {
 		$style        = $row.Style
 		$storeId      = $row.Store
 		
-		# Creating a has table for new products
+		# Creating a hash table for new products
 		if (-not $allProducts.ContainsKey($style)) {
 			$allProducts[$style] = @{}
 		}
@@ -105,6 +101,7 @@ try {
 	$reportData = foreach ($product in $allProducts.Keys) {
 		# This is a table of all the product data for each of the 4 stores
 		$storeProducts = $allProducts[$product]
+		$currRow = $rowCounter
 		
 		# Look at the vendors for this product
 		$thisStylesVendors = $storeProducts.Values | Select-Object -ExpandProperty Vendor -Unique
@@ -132,6 +129,8 @@ try {
 			Price                     = 0
 		}
 		
+		$productVendorComment = ""
+		
 		foreach ($vendor in $allVendors) {
 			$vendorRecord = $storeProducts.Values | Where-Object { $_.Vendor -eq $vendor} | Select-Object -First 1
 			
@@ -142,7 +141,18 @@ try {
 				$columnData["$vendor Old"] = ""
 			}
 			
+			if ($vendorRecord) {
+				$productVendorComment += $vendor + ": " + $vendorRecord.Part_Num + "`n"
+			}
+		
 			$columnData["$vendor New"] = ""
+		}
+		
+		if (-not $productVendorPartNums.ContainsKey($product)) {
+			$productVendorPartNums[$product] = @{
+				Comment = $productVendorComment
+				Row = $currRow
+			}
 		}
 		
 		# Gather some column locations for later
@@ -167,7 +177,6 @@ try {
 		$oldRetailLetter = [char](64 + $oldRetailIndex)
 		
 		# Old Margin
-		$currRow = $rowCounter
 		$oldCostsMinRange = "MIN(" + (($vendorOldLetters | ForEach-Object { "$_$currRow" }) -join ",") + ")"
 		$newCostsMinRange = "MIN(" + (($vendorNewLetters | ForEach-Object { "$_$currRow" }) -join ",") + ")"
 		$columnData["Old Margin"]              = "=($($oldRetailLetter)$currRow - $oldCostsMinRange) / $($oldRetailLetter)$currRow"
@@ -211,19 +220,127 @@ try {
 		$columnData["Cost"]                    = "=$newCostsMinRange"
 		$columnData["Price"]                   = "=$($newRetailLetter)$currRow"
 		
+		# Keep track of values needed for Sheets 3 and 4
+		if (-not $productValues.ContainsKey($product)) {
+			$productValues[$product] = @{
+				Cost = "=Sheet1!D$currRow"
+				Price = "=Sheet1!E$currRow"
+				OldRetail = "=Sheet1!$($oldRetailLetter)$currRow"
+				NewRetail = "=Sheet1!$($newRetailLetter)$currRow"
+				NewMinusOldRetail = "=Sheet1!$($newRetailLetter)$currRow - Sheet1!$($oldRetailLetter)$currRow"
+			}
+		}
+		
 		$rowCounter++
 		
 		# Create a custom object for your Excel row
 		[PSCustomObject]$columnData
 	}
 	
+	$reportData2 = foreach ($product in $allProducts.Keys) {
+		# This is a table of all the product data for each of the 4 stores
+		$storeProducts = $allProducts[$product]
+		
+		foreach ($storeRecord in $storeProducts.Values) {
+			
+			$columnData2 = [ordered]@{
+				StoreProduct              = [string]$storeRecord.Store + $product
+				"Inventory Store"         = $storeRecord.Store
+				Brand                     = $storeRecord.Brand
+				PRODUCT                   = $product
+				"Primary Barcode"         = [string]$storeRecord.Barcode_Lookup + " "
+				"On Hand"                 = $storeRecord.Available
+			}
+			
+			# Create a custom object for your Excel row
+			[PSCustomObject]$columnData2
+		}		
+	}
+	
+	$reportData3 = foreach ($product in $allProducts.Keys) {
+		# This is a table of all the product data for each of the 4 stores
+		$storeProducts = $allProducts[$product]
+		
+		$columnData3 = [ordered]@{
+			Brand                     = $storeProducts[1].Brand
+			Style                     = $product
+			"Barcode Lookup"          = $storeProducts[1].Barcode_Lookup
+			Cost                      = $productValues[$product].Cost
+			Price                     = $productValues[$product].Price
+			Description1              = $storeProducts[1].Description_1
+		}
+		
+		# Create a custom object for your Excel row
+		[PSCustomObject]$columnData3	
+	}
+	
+	$reportData4 = foreach ($product in $allProducts.Keys) {
+		# This is a table of all the product data for each of the 4 stores
+		$storeProducts = $allProducts[$product]
+		
+		$columnData4 = [ordered]@{
+			Brand                     = $storeProducts[1].Brand
+			Style                     = $product
+			Allentown                 = $storeProducts[1].Available
+			Saucon                    = $storeProducts[2].Available
+			Forks                     = $storeProducts[3].Available
+			Trex                      = $storeProducts[4].Available
+			"Old Retail"              = $productValues[$product].OldRetail
+			"New Retail"              = $productValues[$product].NewRetail
+			"New Retail - Old Retail" = $productValues[$product].NewMinusOldRetail
+			"Description 1"           = $storeProducts[1].Description_1
+			Department                = $storeProducts[1].Department
+			Type                      = $storeProducts[1].Type
+			SEASON                    = $storeProducts[1].Season
+			PROMO                     = $storeProducts[1].Promo
+		}
+		
+		# Create a custom object for your Excel row
+		[PSCustomObject]$columnData4
+	}
+	
 	# Generate the Excel File
-	$excelPackage = $reportData | Export-Excel -Path $excelPath -WorksheetName "Sheet One" -TableStyle Medium2 -TableName "PricingTable" -AutoSize -BoldTopRow -PassThru
-	Format-PricingSheet -Worksheet $excelPackage.Workbook.Worksheets["Sheet One"]
+	$excelPackage = $reportData | Export-Excel -Path $excelPath -WorksheetName "Sheet1" -TableStyle Medium2 -TableName "PricingTable" -AutoSize -BoldTopRow -PassThru
+	Format-PricingSheet -Worksheet $excelPackage.Workbook.Worksheets["Sheet1"]
+	
+	foreach ($item in $productVendorPartNums.Values) {
+		Write-Host $item.Row
+		$cell = $excelPackage.Workbook.Worksheets["Sheet1"].Cells["A$($item.Row)"]
+		
+		
+		# Check if a comment already exists, then add/set it
+		if ($null -eq $cell.Comment) {
+			$cell.AddComment("$($item.Comment)", "System")
+		}
+	}
+	
+	# Format Column B (Product) as Text so text alignment matches
+	Set-ExcelRange -Worksheet $excelPackage.Workbook.Worksheets["Sheet1"] -Range "B:B" -NumberFormat "@"
+	
+	# Format Column C (Barcode Lookup) as Text so the E+11 goes away
+	Set-ExcelRange -Worksheet $excelPackage.Workbook.Worksheets["Sheet1"] -Range "C:C" -NumberFormat "@"
+	
+	$excelPackage = $reportData2 | Sort-Object -Property "Inventory Store", PRODUCT | Export-Excel -ExcelPackage $excelPackage -WorksheetName "Sheet2" -TableStyle Medium9 -AutoSize -BoldTopRow -PassThru
+	Format-PricingSheet -Worksheet $excelPackage.Workbook.Worksheets["Sheet2"]
+	
+	$excelPackage = $reportData3 | Export-Excel -ExcelPackage $excelPackage -WorksheetName "Sheet3" -TableStyle Medium9 -AutoSize -BoldTopRow -PassThru
+	Format-PricingSheet -Worksheet $excelPackage.Workbook.Worksheets["Sheet3"]
+	
+	# Format Column B (Product) as Text so text alignment matches
+	Set-ExcelRange -Worksheet $excelPackage.Workbook.Worksheets["Sheet3"] -Range "B:B" -NumberFormat "@"
+	
+	# Format Column C (Barcode Lookup) as Text so the E+11 goes away
+	Set-ExcelRange -Worksheet $excelPackage.Workbook.Worksheets["Sheet3"] -Range "C:C" -NumberFormat "@"
+	
+	$excelPackage = $reportData4 | Export-Excel -ExcelPackage $excelPackage -WorksheetName "Sheet4" -TableStyle Medium9 -AutoSize -BoldTopRow -PassThru
+	Format-PricingSheet -Worksheet $excelPackage.Workbook.Worksheets["Sheet4"]
+	
+	# Format Column B (Product) as Text so text alignment matches
+	Set-ExcelRange -Worksheet $excelPackage.Workbook.Worksheets["Sheet4"] -Range "B:B" -NumberFormat "@"
 	
 	# Save and Close
 	Close-ExcelPackage $excelPackage
 		
 } catch {
-    Write-Host "SQL Error: $_" -ForegroundColor DarkRed
+    Write-Host "Error: $_" -ForegroundColor DarkRed
 }
