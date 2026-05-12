@@ -26,8 +26,9 @@ This will save time at multiple steps of the manual process:
 
 The following functionality exists:
 	Sheet1 (Main sheet for recording part costs, calculating new margins and new retail values, calculating retail price differences)
-
-The following functionality does NOT exist yet:
 	Sheet2 (Barcode lookup, TECHNICALLY not necessary anymore since Barcode Lookup is filled in automatically but leaving it in so we can still check our work)
 	Sheet3 (Product import, should come together quickly since nothing is dynamically generated)
 	Sheet4 (Final price change page that is used for making the document managers will use)
+
+The following functionality does NOT exist yet:
+	Nothing currently
