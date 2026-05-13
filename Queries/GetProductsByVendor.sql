@@ -23,8 +23,8 @@ SELECT tickets.BRAND AS [Brand],
 			WHEN 'TICKNER`S INC.' THEN 'Tick'
 			ELSE contacts.COMPANY
 		END), tickets.BRAND) AS Vendor,
-		ISNULL(parts.PART_NUM, 0) AS [Part_Num],
-		ISNULL(parts.COST, 0) AS [Part_Cost],
+		parts.PART_NUM AS [Part_Num],
+		parts.COST AS [Part_Cost],
 		lookups.UPC AS [UPC]
 FROM VW_TICKETS tickets
 INNER JOIN TB_STYLES styles
@@ -33,9 +33,9 @@ INNER JOIN TB_SKU_BUCKETS buckets
 ON buckets.SKU_ID = tickets.SKU_ID
 AND buckets.SKU_BUCKET_ID = tickets.SKU_BUCKET_ID
 AND buckets.STORE_ID = tickets.STORE_ID
-LEFT JOIN TB_PARTS parts
+INNER JOIN TB_PARTS parts
 ON parts.STYLE_ID = tickets.STYLE_ID
-LEFT JOIN TB_CONTACTS contacts
+INNER JOIN TB_CONTACTS contacts
 ON contacts.CONTACT_ID = parts.CONTACT_ID
 LEFT JOIN (
     SELECT SKU_ID, MAX(LOOKUP) AS [UPC]
@@ -43,8 +43,7 @@ LEFT JOIN (
     WHERE TYP = 1
     GROUP BY SKU_ID
 ) lookups ON lookups.SKU_ID = tickets.SKU_ID
-WHERE tickets.BRAND = $(Brand)
+WHERE contacts.COMPANY = $(Vendor)
 AND tickets.OF1 <> 'DISCO'
 AND styles.STATUS_FINISH <> 'Y'
-AND ISNULL(parts.CONTACT_ID, 0) <> 195
 ORDER BY [Style];

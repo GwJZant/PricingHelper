@@ -2,7 +2,7 @@
 $configFile = "$PSScriptRoot\config.json"
 
 # Load SQL file
-$sqlFilePath = "$PSScriptRoot\Queries\GetProducts.sql"
+$sqlFilePath = "$PSScriptRoot\Queries\GetProductsByBrand.sql"
 
 # Output filename formatting
 # Check if the folder exists; if not, create it
@@ -52,6 +52,26 @@ function Format-PricingSheet {
 	}
 }
 
+# Menu
+Write-Host "How do you want to collect products?" -ForegroundColor Cyan
+Write-Host "1. By Brand (Pet Supplies , Apparel, + Footwear)" -ForegroundColor Cyan
+Write-Host "2. By Vendor (Accessories)" -ForegroundColor Cyan
+Write-Host "3. Exit" -ForegroundColor Cyan
+$selection = Read-Host "Enter your selection: "
+
+if ($selection -eq "1") {
+	$inputBrand = Read-Host "Enter Brand (As it appears in Celerant)"
+
+	$sqlVars = "Brand='$inputBrand'"
+} elseif ($selection -eq "2") {
+	$inputVendor = Read-Host "Enter Vendor Name (As it appears in Celerant)"
+
+	$sqlVars = "Vendor='$inputVendor'"
+	$sqlFilePath = "$PSScriptRoot\Queries\GetProductsByVendor.sql"
+} else {
+	exit
+}
+
 # Connect to Celerant Database
 Write-Host "Connecting to Celerant Database..." -ForegroundColor Cyan
 
@@ -62,11 +82,6 @@ $passSecure = Read-Host "Enter $($config.Celerant.Username) SQL Password" -AsSec
 $passPlain = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto(
     [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($passSecure)
 )
-
-# Ask for Username and Password in the console
-$inputBrand = Read-Host "Enter Brand (As it appears in Celerant)"
-
-$sqlVars = "Brand='$inputBrand'"
 
 # Set up SQL parameters
 $sqlParams = @{
@@ -113,8 +128,6 @@ try {
 		$storeProducts = $allProducts[$product]
 		$currRow = $rowCounter
 		
-		# Write-Host "Brand: $($storeProducts[1].Brand) Style: $($storeProducts[1].Style) Primary Barcode: $($storeProducts[1].Barcode_Lookup)"
-		
 		# Total available
 		$totalAvailable = 0
 		foreach ($storeRecord in $storeProducts.Values) {
@@ -125,6 +138,7 @@ try {
 			Brand                     = $storeProducts[1].Brand
 			Product                   = $product
 			"Barcode Lookup"          = [string]$storeProducts[1].Barcode_Lookup + " "
+			UPC                       = [string]$storeProducts[1].UPC + " "
 			Cost                      = 0
 			Price                     = 0
 		}
@@ -193,7 +207,7 @@ try {
 		
 		# Round to the ten-cent by default
 		$retailCentsOffset = 1
-		if ($storeProducts[1].Last_Cost -ge 12) {
+		if ($storeProducts[1].Last_Price -ge 12) {
 			$retailCentsOffset = 0 #round to dollar if cost is over 12
 		}
 		
@@ -223,8 +237,8 @@ try {
 		# Keep track of values needed for Sheets 3 and 4
 		if (-not $productValues.ContainsKey($product)) {
 			$productValues[$product] = @{
-				Cost = "=Sheet1!D$currRow"
-				Price = "=Sheet1!E$currRow"
+				Cost = "=Sheet1!E$currRow"
+				Price = "=Sheet1!F$currRow"
 				OldRetail = "=Sheet1!$($oldRetailLetter)$currRow"
 				NewRetail = "=Sheet1!$($newRetailLetter)$currRow"
 				NewMinusOldRetail = "=Sheet1!$($newRetailLetter)$currRow - Sheet1!$($oldRetailLetter)$currRow"
@@ -263,7 +277,7 @@ try {
 		
 		$columnData3 = [ordered]@{
 			Brand                     = $storeProducts[1].Brand
-			Style                     = $product
+			Style                     = $($product) + [char]8203
 			"Barcode Lookup"          = $storeProducts[1].Barcode_Lookup
 			Cost                      = $productValues[$product].Cost
 			Price                     = $productValues[$product].Price
@@ -280,7 +294,7 @@ try {
 		
 		$columnData4 = [ordered]@{
 			Brand                     = $storeProducts[1].Brand
-			Style                     = $product
+			Style                     = $($product) + [char]8203
 			Allentown                 = $storeProducts[1].Available
 			Saucon                    = $storeProducts[2].Available
 			Forks                     = $storeProducts[3].Available
@@ -319,6 +333,7 @@ try {
 	
 	# Format Column C (Barcode Lookup) as Text so the E+11 goes away
 	Set-ExcelRange -Worksheet $excelPackage.Workbook.Worksheets["Sheet1"] -Range "C:C" -NumberFormat "@"
+	Set-ExcelRange -Worksheet $excelPackage.Workbook.Worksheets["Sheet1"] -Range "D:D" -NumberFormat "@"
 	
 	$excelPackage = $reportData2 | Sort-Object -Property "Inventory Store", PRODUCT | Export-Excel -ExcelPackage $excelPackage -WorksheetName "Sheet2" -TableStyle Medium9 -AutoSize -BoldTopRow -PassThru
 	Format-PricingSheet -Worksheet $excelPackage.Workbook.Worksheets["Sheet2"]
