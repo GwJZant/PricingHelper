@@ -29,34 +29,6 @@ if (Test-Path $configFile) {
     exit
 }
 
-# Connect to Celerant Database
-Write-Host "Connecting to Celerant Database..." -ForegroundColor Cyan
-
-# Ask for Username and Password in the console
-$passSecure = Read-Host "Enter $($config.Celerant.Username) SQL Password" -AsSecureString
-
-# Convert to plain text for the SQL Driver
-$passPlain = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto(
-    [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($passSecure)
-)
-
-# Ask for Username and Password in the console
-$inputBrand = Read-Host "Enter Brand (As it appears in Celerant)"
-
-$sqlVars = "Brand=$inputBrand"
-
-# Set up SQL parameters
-$sqlParams = @{
-    ServerInstance         = $config.Celerant.ServerInstance
-    Database               = $config.Celerant.Database
-	InputFile              = $sqlFilePath
-	Variable               = $sqlVars
-	Username               = $config.Celerant.Username
-	Password               = $passPlain
-	Encrypt                = "Mandatory"
-	TrustServerCertificate = $true
-}
-
 # Function to format columns
 function Format-PricingSheet {
 	param($Worksheet)
@@ -80,6 +52,34 @@ function Format-PricingSheet {
 	}
 }
 
+# Connect to Celerant Database
+Write-Host "Connecting to Celerant Database..." -ForegroundColor Cyan
+
+# Ask for Username and Password in the console
+$passSecure = Read-Host "Enter $($config.Celerant.Username) SQL Password" -AsSecureString
+
+# Convert to plain text for the SQL Driver
+$passPlain = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto(
+    [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($passSecure)
+)
+
+# Ask for Username and Password in the console
+$inputBrand = Read-Host "Enter Brand (As it appears in Celerant)"
+
+$sqlVars = "Brand='$inputBrand'"
+
+# Set up SQL parameters
+$sqlParams = @{
+    ServerInstance         = $config.Celerant.ServerInstance
+    Database               = $config.Celerant.Database
+	InputFile              = $sqlFilePath
+	Variable               = $sqlVars
+	Username               = $config.Celerant.Username
+	Password               = $passPlain
+	Encrypt                = "Mandatory"
+	TrustServerCertificate = $true
+}
+
 try {
     $productData = Invoke-Sqlcmd @sqlParams
 	
@@ -92,6 +92,16 @@ try {
 			$allProducts[$style] = @{}
 		}
 		
+		# Look at the vendors for this product
+		$thisStylesVendors = $row | Select-Object -ExpandProperty Vendor -Unique
+		
+		# For each of the vendors for this product, add them to our master list of vendors if not already present
+		foreach ($v in $thisStylesVendors) {
+			if ($v -notin $allVendors) {
+				$allVendors += $v
+			}
+		}
+		
 		# Write data for all 4 stores to hash table
 		$allProducts[$style][$storeId] = $row
 	}
@@ -102,16 +112,6 @@ try {
 		# This is a table of all the product data for each of the 4 stores
 		$storeProducts = $allProducts[$product]
 		$currRow = $rowCounter
-		
-		# Look at the vendors for this product
-		$thisStylesVendors = $storeProducts.Values | Select-Object -ExpandProperty Vendor -Unique
-		
-		# For each of the vendors for this product, add them to our master list of vendors if not already present
-		foreach ($v in $thisStylesVendors) {
-			if ($v -notin $allVendors) {
-				$allVendors += $v
-			}
-		}
 		
 		# Write-Host "Brand: $($storeProducts[1].Brand) Style: $($storeProducts[1].Style) Primary Barcode: $($storeProducts[1].Barcode_Lookup)"
 		
@@ -305,7 +305,7 @@ try {
 	
 	foreach ($item in $productVendorPartNums.Values) {
 		Write-Host $item.Row
-		$cell = $excelPackage.Workbook.Worksheets["Sheet1"].Cells["A$($item.Row)"]
+		$cell = $excelPackage.Workbook.Worksheets["Sheet1"].Cells["B$($item.Row)"]
 		
 		
 		# Check if a comment already exists, then add/set it

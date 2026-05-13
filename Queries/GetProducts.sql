@@ -13,8 +13,8 @@ SELECT tickets.BRAND AS [Brand],
 	   buckets.QOH AS [Available],
 	   tickets.PRICE AS [Last_Price],
 	   buckets.LAST_COST AS [Last_Cost],
-	   parts.CONTACT_ID AS [Contact_Id], 
-	   (CASE contacts.COMPANY
+	   ISNULL(parts.CONTACT_ID, 0) AS [Contact_Id], 
+	   ISNULL((CASE contacts.COMPANY
 			WHEN 'ZEIGLER`S DISTRIBUTIOR INC' THEN 'Zeig'
 			WHEN 'PHILLIP`S PET SUPPLY' THEN 'Phil'
 			WHEN 'NATURAL ANIMAL NUTRITION' THEN 'NAN'
@@ -22,7 +22,7 @@ SELECT tickets.BRAND AS [Brand],
 			WHEN 'PET FOOD EXPERTS' THEN 'PFX'
 			WHEN 'TICKNER`S INC.' THEN 'Tick'
 			ELSE contacts.COMPANY
-		END) AS Vendor,
+		END), tickets.BRAND) AS Vendor,
 		parts.PART_NUM AS [Part_Num],
 		parts.COST AS [Part_Cost]
 FROM VW_TICKETS tickets
@@ -34,10 +34,10 @@ AND buckets.SKU_BUCKET_ID = tickets.SKU_BUCKET_ID
 AND buckets.STORE_ID = tickets.STORE_ID
 INNER JOIN TB_PARTS parts
 ON parts.STYLE_ID = tickets.STYLE_ID
-AND parts.CONTACT_ID <> 195
-INNER JOIN TB_CONTACTS contacts
+LEFT JOIN TB_CONTACTS contacts
 ON contacts.CONTACT_ID = parts.CONTACT_ID
-WHERE tickets.BRAND = '$(Brand)'
+WHERE tickets.BRAND = $(Brand)
 AND tickets.OF1 <> 'DISCO'
 AND styles.STATUS_FINISH <> 'Y'
+AND ISNULL(parts.CONTACT_ID, 0) <> 195
 ORDER BY [Style];
