@@ -1,11 +1,14 @@
 PricingHelper
-Requirements: ImportExcel
+Created by: David Barnes
+Requirements: ImportExcel, SqlServer
 
-***************************************************************************************************************************************************************************
-* To use this tool you need to install the ImportExcel module. All you need to do is run the below command in Powershell. It does not require Administrator credentials.  *
-*                                                                                                                                                                         *
-* Install-Module -Name ImportExcel -Scope CurrentUser -Force                                                                                                              *
-***************************************************************************************************************************************************************************
+*******************************************************************************************************************************************
+* To use this tool you need to install the ImportExcel and SqlServer modules. All you need to do is run the below commands in Powershell. *
+* It does not require Administrator credentials.                                                                                          *
+*                                                                                                                                         *
+* Install-Module -Name ImportExcel -Scope CurrentUser -Force                                                                              *     
+* Install-Module -Name SqlServer -Scope CurrentUser -Force                                                                                *
+*******************************************************************************************************************************************
 
 This is a tool meant to save time setting up the spreadsheets we use during the pricing update process.
 
@@ -13,7 +16,7 @@ Normally we need to do a search in Celerant, export that search to a .csv, copy 
 
 With this tool, the aim is to generate an Excel document with 4 sheets already built out that we just need to import into Google Sheets. The only data that the user should have to input is information that requires manual lookups like an updated price. The rest of the spreadsheet is done the exact same way every single time so we're wasting our time doing that process manually over and over.
 
-In a perfect world, the user should only need to fill out new "Cost" values on Sheet1 and the entire rest of the document should be filled out.
+For deciding which cost values to use when there are multiple vendors, the tool creates a formula that looks at all the values and picks the minimum price. If that behavior is not desired, you can copy and paste the value you want into that cell or you can change the formula then drag it over any/all columns you want.
 
 This will save time at multiple steps of the manual process:
 	Obtaining Sheet1 product-level data from Celerant search
@@ -30,5 +33,16 @@ The following functionality exists:
 	Sheet3 (Product import, should come together quickly since nothing is dynamically generated)
 	Sheet4 (Final price change page that is used for making the document managers will use)
 
-The following functionality does NOT exist yet:
-	Nothing currently
+TODO:
+	Add Part Numbers to a column at the end of Sheet1.
+
+HOW TO RUN:
+Right-click PricingHelper.ps1 and select "Run with PowerShell"
+
+Alternatively, Shift + Right-click anywhere in the folder (don't Shift + Right-click the file itself) and select "Open PowerShell window here" to open a PowerShell window first. This will make it so the command prompt window won't close as soon as this tool finishes which will let you inspect the output if you wish. To run the script with this method, type (or copy and paste) the following:
+
+./PricingHelper.ps1
+
+HOW TO INSTALL MODULES:
+Open PowerShell by searching for it with the Start menu or shift + right-click the whitespace of any folder's window and click "Open PowerShell window here"
+Copy and paste the Install-Module commands into PowerShell. If the modules are already installed, they will be ignored.
