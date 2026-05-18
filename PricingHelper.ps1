@@ -269,7 +269,7 @@ try {
 		
 		$columnData3 = [ordered]@{
 			Brand                     = $storeProducts[1].Brand
-			Style                     = $($product) + [char]8203
+			Style                     = $product
 			"Barcode Lookup"          = $storeProducts[1].Barcode_Lookup
 			Cost                      = $productValues[$product].Cost
 			Price                     = $productValues[$product].Price
