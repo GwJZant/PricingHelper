@@ -76,6 +76,7 @@ if ($selection -eq "1") {
 }
 
 # Connect to Celerant Database
+Write-Host ""
 Write-Host "Connecting to Celerant Database..." -ForegroundColor Cyan
 
 # Set up SQL parameters
@@ -334,7 +335,7 @@ try {
 		
 		# Check if a comment already exists, then add/set it
 		if ($null -eq $cell.Comment) {
-			$cell.AddComment("$($item.Comment)", "System")
+			[void]$cell.AddComment("$($item.Comment)", "System")
 		}
 	}
 	
@@ -365,6 +366,8 @@ try {
 	
 	# Save and Close
 	Close-ExcelPackage $excelPackage
+	
+	Write-Host "Done." -ForegroundColor Cyan
 		
 } catch {
     Write-Host "Error: $_" -ForegroundColor DarkRed
