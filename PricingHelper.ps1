@@ -16,6 +16,7 @@ $excelPath = "$PSScriptRoot\Output\Pricing_$timestamp.xlsx"
 
 # Hash objects used for data storage
 $allProducts = @{} # A has table to store products
+$productVendorInfo = @{}
 $productValues = @{}
 $productVendorPartNums = @{}
 $allVendors = @() # A list to store all vendor shortnames
@@ -93,10 +94,15 @@ try {
 	foreach ($row in $productData) {
 		$style        = $row.Style
 		$storeId      = $row.Store
+		$vendor       = $row.Vendor
 		
 		# Creating a hash table for new products
 		if (-not $allProducts.ContainsKey($style)) {
 			$allProducts[$style] = @{}
+		}
+		
+		if (-not $productVendorInfo.ContainsKey($style)) {
+			$productVendorInfo[$style] = @{}
 		}
 		
 		# Look at the vendors for this product
@@ -111,6 +117,13 @@ try {
 		
 		# Write data for all 4 stores to hash table
 		$allProducts[$style][$storeId] = $row
+		
+		if (-not [string]::IsNullOrEmpty($vendor) -and -not $productVendorInfo[$style].ContainsKey($vendor)) {
+			$productVendorInfo[$style][$vendor] = @{
+				Part_Num  = $row.Part_Num
+				Part_Cost = $row.Part_Cost
+			}
+		}
 	}
 	
 	$rowCounter = 2
@@ -138,17 +151,15 @@ try {
 		$productVendorComment = ""
 		
 		foreach ($vendor in $allVendors) {
-			$vendorRecord = $storeProducts.Values | Where-Object { $_.Vendor -eq $vendor} | Select-Object -First 1
+			# $vendorRecord = $storeProducts.Values | Where-Object { $_.Vendor -eq $vendor} | Select-Object -First 1
+			$vendorRecord = $productVendorInfo[$product][$vendor]
 			
 			if ($vendorRecord) {
 				$columnData["$vendor Old"] = $vendorRecord.Part_Cost
+				$productVendorComment += $vendor + ": " + $vendorRecord.Part_Num + "`n"
 			}
 			else {
 				$columnData["$vendor Old"] = ""
-			}
-			
-			if ($vendorRecord) {
-				$productVendorComment += $vendor + ": " + $vendorRecord.Part_Num + "`n"
 			}
 		
 			$columnData["$vendor New"] = ""
@@ -310,7 +321,6 @@ try {
 	Format-PricingSheet -Worksheet $excelPackage.Workbook.Worksheets["Sheet1"]
 	
 	foreach ($item in $productVendorPartNums.Values) {
-		Write-Host $item.Row
 		$cell = $excelPackage.Workbook.Worksheets["Sheet1"].Cells["B$($item.Row)"]
 		
 		
