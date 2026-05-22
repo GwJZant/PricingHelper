@@ -58,17 +58,19 @@ Write-Host "How do you want to collect products?" -ForegroundColor Cyan
 Write-Host "1. By Brand (Pet Supplies , Apparel, + Footwear)" -ForegroundColor Cyan
 Write-Host "2. By Vendor (Accessories)" -ForegroundColor Cyan
 Write-Host "3. Exit" -ForegroundColor Cyan
-$selection = Read-Host "Enter your selection: "
+$selection = Read-Host "Enter your selection"
 
 if ($selection -eq "1") {
 	$inputBrand = Read-Host "Enter Brand (As it appears in Celerant)"
 
 	$sqlVars = "Brand='$inputBrand'"
+	$selectionType = "Brand"
 } elseif ($selection -eq "2") {
 	$inputVendor = Read-Host "Enter Vendor Name (As it appears in Celerant)"
 
 	$sqlVars = "Vendor='$inputVendor'"
 	$sqlFilePath = "$PSScriptRoot\Queries\GetProductsByVendor.sql"
+	$selectionType = "Vendor"
 } else {
 	exit
 }
@@ -90,6 +92,12 @@ $sqlParams = @{
 
 try {
     $productData = Invoke-Sqlcmd @sqlParams
+	
+	# Check if no data found
+	if ($null -eq $productData -or $productData.Count -eq 0) {
+        Write-Warning "No data found. Check your $($selectionType)."
+        return
+    }
 	
 	foreach ($row in $productData) {
 		$style        = $row.Style
