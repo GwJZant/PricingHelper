@@ -368,6 +368,7 @@ try {
 	Close-ExcelPackage $excelPackage
 	
 	Write-Host "Done." -ForegroundColor Cyan
+	Pause
 		
 } catch {
     Write-Host "Error: $_" -ForegroundColor DarkRed

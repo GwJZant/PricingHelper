@@ -1,6 +1,6 @@
 SELECT tickets.BRAND AS [Brand], 
 	   tickets.STYLE AS [Style],
-	   tickets.LOOKUP AS [Barcode_Lookup], 
+	   MAX(tickets.LOOKUP) AS [Barcode_Lookup], 
 	   tickets.STORE_ID AS [Store],
 	   tickets.PRICE AS [Old_Retail], 
 	   CAST(styles.MARGIN_PERCENT AS DECIMAL(18, 2)) AS [Old_Margin], 
@@ -10,7 +10,7 @@ SELECT tickets.BRAND AS [Brand],
 	   tickets.TYP AS [Type],
 	   tickets.OF1 AS [Season], 
 	   tickets.OF5 AS [Promo],
-	   buckets.QOH AS [Available],
+	   SUM(buckets.QOH) AS [Available],
 	   tickets.PRICE AS [Last_Price],
 	   buckets.LAST_COST AS [Last_Cost],
 	   ISNULL(parts.CONTACT_ID, 0) AS [Contact_Id], 
@@ -23,9 +23,9 @@ SELECT tickets.BRAND AS [Brand],
 			WHEN 'TICKNER`S INC.' THEN 'Tick'
 			ELSE contacts.COMPANY
 		END), tickets.BRAND) AS Vendor,
-		parts.PART_NUM AS [Part_Num],
-		parts.COST AS [Part_Cost],
-		lookups.UPC AS [UPC]
+		ISNULL(parts.PART_NUM, 0) AS [Part_Num],
+		ISNULL(parts.COST, 0) AS [Part_Cost],
+		MAX(lookups.UPC) AS [UPC]
 FROM VW_TICKETS tickets
 INNER JOIN TB_STYLES styles
 ON styles.STYLE_ID = tickets.STYLE_ID
@@ -46,4 +46,21 @@ LEFT JOIN (
 WHERE contacts.COMPANY = $(Vendor)
 AND tickets.OF1 <> 'DISCO'
 AND styles.STATUS_FINISH <> 'Y'
+GROUP BY tickets.BRAND, 
+	   tickets.STYLE,
+	   tickets.STORE_ID,
+	   tickets.PRICE, 
+	   styles.MARGIN_PERCENT, 
+	   tickets.DESCRIPTION, 
+	   styles.DESCRIPTION_2, 
+	   tickets.DEPT, 
+	   tickets.TYP,
+	   tickets.OF1, 
+	   tickets.OF5,
+	   tickets.PRICE,
+	   buckets.LAST_COST,
+	   parts.CONTACT_ID, 
+	   contacts.COMPANY,
+	   parts.PART_NUM,
+	   parts.COST
 ORDER BY [Style];
