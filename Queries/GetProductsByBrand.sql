@@ -1,6 +1,6 @@
 SELECT tickets.BRAND AS [Brand], 
 	   tickets.STYLE AS [Style],
-	   MAX(tickets.LOOKUP) AS [Barcode_Lookup], 
+	   tickets.LOOKUP AS [Barcode_Lookup], 
 	   tickets.STORE_ID AS [Store],
 	   tickets.PRICE AS [Old_Retail], 
 	   CAST(styles.MARGIN_PERCENT AS DECIMAL(18, 2)) AS [Old_Margin], 
@@ -49,6 +49,7 @@ AND styles.STATUS_FINISH <> 'Y'
 AND ISNULL(parts.CONTACT_ID, 0) <> 195
 GROUP BY tickets.BRAND, 
 	   tickets.STYLE,
+	   tickets.LOOKUP,
 	   tickets.STORE_ID,
 	   tickets.PRICE, 
 	   styles.MARGIN_PERCENT, 

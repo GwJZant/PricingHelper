@@ -20,6 +20,7 @@ $productVendorInfo = @{}
 $productValues = @{}
 $productVendorPartNums = @{}
 $allVendors = @() # A list to store all vendor shortnames
+$allBarcodes = @{}
 
 # Load the config file and ensure it exists
 if (Test-Path $configFile) {
@@ -104,6 +105,17 @@ try {
 		$style        = $row.Style
 		$storeId      = $row.Store
 		$vendor       = $row.Vendor
+		$barcode      = $row.Barcode_Lookup
+		
+		$barcodeKey = "$style-$barcode" 
+		if (-not $allBarcodes.ContainsKey($barcodeKey) -and -not [string]::IsNullOrWhiteSpace($barcode)) {
+			$allBarcodes[$barcodeKey] = @{
+				Brand          = $row.Brand
+				Product        = $style
+				Barcode_Lookup = $barcode
+				Description_1  = $row.Description_1
+			}
+		}
 		
 		# Creating a hash table for new products
 		if (-not $allProducts.ContainsKey($style)) {
@@ -124,8 +136,12 @@ try {
 			}
 		}
 		
-		# Write data for all 4 stores to hash table
-		$allProducts[$style][$storeId] = $row
+		if ($allProducts[$style].ContainsKey($storeId)) {
+			$allProducts[$style][$storeId].Available += $row.Available
+		} else {
+			# First time seeing this store for this style? Safe to assign the row object directly
+			$allProducts[$style][$storeId] = $row
+		}
 		
 		if (-not [string]::IsNullOrEmpty($vendor) -and -not $productVendorInfo[$style].ContainsKey($vendor)) {
 			$productVendorInfo[$style][$vendor] = @{
@@ -257,6 +273,18 @@ try {
 			}
 		}
 		
+		foreach ($vendor in $allVendors) {
+			# $vendorRecord = $storeProducts.Values | Where-Object { $_.Vendor -eq $vendor} | Select-Object -First 1
+			$vendorRecord = $productVendorInfo[$product][$vendor]
+			
+			if ($vendorRecord) {
+				$columnData["$vendor Part"] = $vendorRecord.Part_Num
+			}
+			else {
+				$columnData["$vendor Part"] = ""
+			}
+		}
+		
 		$rowCounter++
 		
 		# Create a custom object for your Excel row
@@ -283,17 +311,16 @@ try {
 		}		
 	}
 	
-	$reportData3 = foreach ($product in $allProducts.Keys) {
-		# This is a table of all the product data for each of the 4 stores
-		$storeProducts = $allProducts[$product]
+	$reportData3 = foreach ($barcodeItem in $allBarcodes.Values) {
+		$product = $barcodeItem.Product
 		
 		$columnData3 = [ordered]@{
-			Brand                     = $storeProducts[1].Brand
-			Product                     = $product
-			"Primary Barcode"          = $storeProducts[1].Barcode_Lookup
+			Brand                     = $barcodeItem.Brand
+			Product                   = $product
+			"Primary Barcode"         = [string]$barcodeItem.Barcode_Lookup
 			Cost                      = $productValues[$product].Cost
 			Price                     = $productValues[$product].Price
-			Description1              = $storeProducts[1].Description_1
+			Description1              = $barcodeItem.Description_1
 		}
 		
 		# Create a custom object for your Excel row
