@@ -174,6 +174,7 @@ try {
 		}
 		
 		$productVendorComment = ""
+		$vendorCount = 0
 		
 		foreach ($vendor in $allVendors) {
 			# $vendorRecord = $storeProducts.Values | Where-Object { $_.Vendor -eq $vendor} | Select-Object -First 1
@@ -182,6 +183,8 @@ try {
 			if ($vendorRecord) {
 				$columnData["$vendor Old"] = $vendorRecord.Part_Cost
 				$productVendorComment += $vendor + ": " + $vendorRecord.Part_Num + "`n"
+				
+				$vendorCount += 1
 			}
 			else {
 				$columnData["$vendor Old"] = ""
@@ -254,7 +257,7 @@ try {
 		$columnData["Type"]                    = $storeProducts[1].Type
 		$columnData["Season"]                  = $storeProducts[1].Season
 		$columnData["Promo"]                   = $storeProducts[1].Promo
-		$columnData["Available"]               = $totalAvailable
+		$columnData["Available"]               = [int] [Math]::Truncate($totalAvailable / $vendorCount)
 		$columnData["Last Cost"]               = $storeProducts[1].Last_Cost
 		$columnData["Last Price"]              = $storeProducts[1].Last_Price
 		
@@ -295,6 +298,17 @@ try {
 		# This is a table of all the product data for each of the 4 stores
 		$storeProducts = $allProducts[$product]
 		
+		$vendorCount = 0
+		
+		foreach ($vendor in $allVendors) {
+			# $vendorRecord = $storeProducts.Values | Where-Object { $_.Vendor -eq $vendor} | Select-Object -First 1
+			$vendorRecord = $productVendorInfo[$product][$vendor]
+			
+			if ($vendorRecord) {
+				$vendorCount += 1
+			}
+		}
+		
 		foreach ($storeRecord in $storeProducts.Values) {
 			
 			$columnData2 = [ordered]@{
@@ -303,7 +317,7 @@ try {
 				Brand                     = $storeRecord.Brand
 				PRODUCT                   = $product
 				"Primary Barcode"         = [string]$storeRecord.Barcode_Lookup + " "
-				"On Hand"                 = $storeRecord.Available
+				"On Hand"                 = [int] [Math]::Truncate($storeRecord.Available / $vendorCount)
 			}
 			
 			# Create a custom object for your Excel row
@@ -331,13 +345,24 @@ try {
 		# This is a table of all the product data for each of the 4 stores
 		$storeProducts = $allProducts[$product]
 		
+		$vendorCount = 0
+		
+		foreach ($vendor in $allVendors) {
+			# $vendorRecord = $storeProducts.Values | Where-Object { $_.Vendor -eq $vendor} | Select-Object -First 1
+			$vendorRecord = $productVendorInfo[$product][$vendor]
+			
+			if ($vendorRecord) {
+				$vendorCount += 1
+			}
+		}
+		
 		$columnData4 = [ordered]@{
 			Brand                     = $storeProducts[1].Brand
 			Style                     = $($product) + [char]8203
-			Allentown                 = $storeProducts[1].Available
-			Saucon                    = $storeProducts[2].Available
-			Forks                     = $storeProducts[3].Available
-			Trex                      = $storeProducts[4].Available
+			Allentown                 = [int] [Math]::Truncate($storeProducts[1].Available / $vendorCount)
+			Saucon                    = [int] [Math]::Truncate($storeProducts[2].Available / $vendorCount)
+			Forks                     = [int] [Math]::Truncate($storeProducts[3].Available / $vendorCount)
+			Trex                      = [int] [Math]::Truncate($storeProducts[4].Available / $vendorCount)
 			"Old Retail"              = $productValues[$product].OldRetail
 			"New Retail"              = $productValues[$product].NewRetail
 			"New Retail - Old Retail" = $productValues[$product].NewMinusOldRetail
