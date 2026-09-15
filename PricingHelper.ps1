@@ -410,6 +410,9 @@ try {
 	# Format Column C (Barcode Lookup) as Text so the E+11 goes away
 	Set-ExcelRange -Worksheet $excelPackage.Workbook.Worksheets["Sheet3"] -Range "C:C" -NumberFormat "@"
 	
+	Set-ExcelRange -Worksheet $excelPackage.Workbook.Worksheets["Sheet3"] -Range "D:D" -NumberFormat "0.00"
+	Set-ExcelRange -Worksheet $excelPackage.Workbook.Worksheets["Sheet3"] -Range "E:E" -NumberFormat "0.00"
+	
 	$excelPackage = $reportData4 | Export-Excel -ExcelPackage $excelPackage -WorksheetName "Sheet4" -TableStyle Medium9 -AutoSize -BoldTopRow -PassThru
 	Format-PricingSheet -Worksheet $excelPackage.Workbook.Worksheets["Sheet4"]
 	
