@@ -58,7 +58,8 @@ function Format-PricingSheet {
 Write-Host "How do you want to collect products?" -ForegroundColor Cyan
 Write-Host "1. By Brand (Pet Supplies , Apparel, + Footwear)" -ForegroundColor Cyan
 Write-Host "2. By Vendor (Accessories)" -ForegroundColor Cyan
-Write-Host "3. Exit" -ForegroundColor Cyan
+Write-Host "3. CHAAR Grooming" -ForegroundColor Cyan
+Write-Host "4. Exit" -ForegroundColor Cyan
 $selection = Read-Host "Enter your selection"
 
 if ($selection -eq "1") {
@@ -72,6 +73,10 @@ if ($selection -eq "1") {
 	$sqlVars = "Vendor='$inputVendor'"
 	$sqlFilePath = "$PSScriptRoot\Queries\GetProductsByVendor.sql"
 	$selectionType = "Vendor"
+} elseif ($selection -eq "3") {
+	$sqlVars = "Vendor=''"
+	$sqlFilePath = "$PSScriptRoot\Queries\GetGroomingProducts.sql"
+	$selectionType = "Grooming"
 } else {
 	exit
 }
